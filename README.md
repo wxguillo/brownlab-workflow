@@ -10,7 +10,8 @@ cd tutorial
 mkdir 1_raw-fastq
 ```
 Subsequent steps will be conducted in numbered folders following the 1_, 2_, 3_... numbering scheme, which will make it easier to keep track of what's going on.  
-Now we need to move the provided example files into `tutorial`. 
+Now we need to move the provided example files into `tutorial`. Download the following twelve [.fastq](https://support.illumina.com/bulletins/2016/04/fastq-files-explained.html) files from X and place them into `1_raw-fastq`. (Probably easiest to do this via desktop).  
+Also place the various files in the `example-files` folder in this repository directly into the `tutorial` folder on your computer (not a subfolder).
 ## Read trimming
 ## Sequence assembly
 ## Locus matching
