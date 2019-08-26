@@ -152,6 +152,87 @@ Note that there are now 6 files rather than 12 (1 per sample rather than 2), and
 - `AssertionError: Trimmomatic does not appear to be installed`: Ensure you have specified the correct location of the `trimmomatic-0.32.jar` file.
 - `IOError: There is a problem with the read names for RAPiD-Genomics_HL5T3BBXX_SIU_115401_P02_WB02. Ensure you do not have spelling/capitalization errors in your conf file.`: This is the most common error you will get running Illumiprocessor, and it has multiple possible solutions (note that the sample name specified is from my example; it will likely differ for you). The first thing to do is to check the spelling of the tag name and ensure it matches the spelling of the corresponding filename. In my case, I had to change `RAPiD-Genomics_HL5T3BBXX_SIU_115401_P02_WB02` to `RAPiD-Genomics_HL5T3BBXX_SIU_115401_SIU_115401_P02_WB02`. The double `SIU_115401_SIU_115401` construction is probably due to this being a sample from Plate 2, which has combined read files that altered the filenames. However, another possible cause of this error is not specifying your `--r1` and `--r2` arguments, either correctly or at all. Assess both possibilities.
 ## Sequence assembly
+The next step is to assemble our raw reads into usable data. This is the first stage at which we will be using the software package [PHYLUCE](https://phyluce.readthedocs.io/en/latest/index.html), written by Brant Faircloth at LSU (who also led the development of UCE sequence capture for phylogenomics). PHYLUCE contains tons of commands for processing UCE sequence data, and encapsulates a lot of other programs. Like Illumiprocessor, it runs on Java 7, so make sure you have set your machine to that version.
+
+Sequence assembly is basically the process of putting your raw sequence data into a format at least reminiscent of the way the DNA was organized in life. Imagine that you have one hundred copies of a book, and you put them all in a paper shredder. Now you have to reconstruct the book from the shredded chunks. Since you have multiple copies, not all of which were shredded in the same way, you can find chunks that partially match and use these matches to connect to the next sentence. Now, however, imagine that the book contains several pages that are just ["All work and no play makes Jack a dull boy"](https://www.youtube.com/watch?v=4lQ_MjU4QHw) over and over. This makes the process much more difficult because this construction causes extreme ambiguity. This is an analogy to how assembly works, and also how repeating DNA elements make assembly difficult. This is why many computational biologists have made their careers based on writing powerful de novo assembly programs.
+
+PHYLUCE can assemble sequences using the programs [velvet](https://www.ebi.ac.uk/~zerbino/velvet/), [ABySS](http://www.bcgsc.ca/platform/bioinfo/software/abyss), and [Trinity](https://github.com/trinityrnaseq/trinityrnaseq/wiki). Out of these, ABySS is probably regarded as "the best" in terms of assembly accuracy, but Faircloth recommends using Trinity out of a combination of good speed, and providing longer contigs. I have used Trinity in all of my Brown Lab projects and will use it in this tutorial.
+
+Just like with Illumiprocessor, the first thing we need to do is... make a configuration file!
+### Making the assembly configuration file
+Compared to the Illumiprocessor config file, the assembly one is very easy to make (and can be downloaded as `assembly.conf` from the `example-files` directory in this repository). You can make it with a simple Bash script:
+```
+cd 2_clean-fastq
+echo "[samples]" > ../assembly.conf
+for i in *; \
+   do echo $i":/home/bender/Desktop/tutorial/2_clean-fastq/"$i"/split-adapter-quality-trimmed/"; \
+   done >> ../assembly.conf
+```
+The first command moves you into the `2_clean-fastq` directory, and the second initiates a text file with the `[samples]` header. The third command is a `for` loop that prints out the name of each sample (represented by `$i`), followed by a colon and lastly the file path to the `split-adapter-quality-trimmed` folder inside of each sample's individual folder. The `split-adapter-quality-trimmed` folders contain .fastq.gz files with the trimmed reads. The assembler needs to know the location of each of these folders for each sample.
+
+Bash tips:
+- The `..` construction means "the containing directory"; in this case, I use it to tell the computer to create the file `assembly.conf` in the containing directory `tutorial` rather than the present directory `2_clean-fastq`
+- The `>` sign means "put the results of this command into a file called 'this'", in this case `assembly.conf`
+- The `>>` sign is similar to `>`, put instead it appends the results of the command into the file. Using `>` would overwrite that file.
+- The `*` wildcard sign matches everything in the directory. You can use this sign in various ways to create matches. For instance, using `*2019` would match all files that end with "2019".
+- A `for` loop has the following structure: "for all of the objects in this set; do this; done". The set in this case is `*`, or all of the files in the `2_clean-fastq` directory (e.g., all of the samples). `i` is basically a variable that represents each item in the set. The command "loops" through each possible value of `i`, performing the commands listed after `do` for each one (e.g., each sample). The `done` construct signals the loop to close. 
+
+After running the command, it's usually a good idea to manually check the file to ensure that you have only the `[samples]` header and the sample paths listed. If there were any other files in the `2_clean-fastq` folder, they would be listed in this file as well and need to be removed. The file should look like this:
+```
+[samples]
+AbassJB010n1-0182-ABIC:/home/bender/Desktop/tutorial/2_clean-fastq/AbassJB010n1-0182-ABIC/split-adapter-quality-trimmed/
+AbassJLB07-740-1-0189-ABIJ:/home/bender/Desktop/tutorial/2_clean-fastq/AbassJLB07-740-1-0189-ABIJ/split-adapter-quality-trimmed/
+AflavMTR19670-0522-AFCC:/home/bender/Desktop/tutorial/2_clean-fastq/AflavMTR19670-0522-AFCC/split-adapter-quality-trimmed/
+AhahnJLB17-087-0586-AFIG:/home/bender/Desktop/tutorial/2_clean-fastq/AhahnJLB17-087-0586-AFIG/split-adapter-quality-trimmed/
+ApeteJLB07-001-0008-AAAI:/home/bender/Desktop/tutorial/2_clean-fastq/ApeteJLB07-001-0008-AAAI/split-adapter-quality-trimmed/
+AtrivJMP26720-0524-AFCE:/home/bender/Desktop/tutorial/2_clean-fastq/AtrivJMP26720-0524-AFCE/split-adapter-quality-trimmed/
+```
+You should go back into the `tutorial` directory after this. Use:
+```
+cd ..
+```
+### Running Trinity to assemble cleaned reads
+With the assembly configuration file completed, we can now run Trinity. Use the following PHYLUCE command:
+```
+phyluce_assembly_assemblo_trinity \
+    --conf assembly.conf \
+    --output 3_trinity-assemblies \
+    --clean \
+    --cores 19
+```
+- `--clean` specifies that you want to remove extraneous temporary files. This makes the output directory much smaller.
+
+Hopefully your run works the first time. This is generally one of the longest-duration steps in the pipeline - each assembly generally takes an hour to complete with 19 cores. For a set of 96 samples, this process can take most of a working week. I like to run it over a weekend.
+
+When the assemblies have finished, you should have a folder called `3_trinity-assemblies` in your `tutorial` folder. Using the command:
+```
+ls 3_trinity-assemblies
+```
+should display:
+```
+DISPLAY THIS
+```
+#### Troubleshooting Trinity
+Generally, the most common error with Trinity will generally be caused by specifying incorrect file paths in your configuration file. Double-check them to make sure they're correct. 
+
+Other possible issues can arise if you copied the trimmed reads over from another directory without preserving folder structure. This can break the symlinks (symbolic links) that are in the `raw-reads` subfolder of each sample's folder. They need to be replaced for Trinity to function. You can do that with the following Bash commands:
+```
+cd 2_clean-fastq
+echo "-READ1.fastq.gz" > reads.txt
+echo "-READ2.fastq.gz" >> reads.txt
+ls > taxa.txt
+for j in $(cat reads.txt); \
+   do for i in $(cat taxa.txt); \
+         do ln -s $i/split-adapter-quality-trimmed/$i$j $i/raw-reads/$i$j; \
+         done; \
+   done
+cd ..
+```
+This creates two files: the first, `reads.txt`, contains a list of two file endings that will be looped over to construct proper symlink names; the second, `taxa.txt`, contains a simple list of all of the samples in the `2_clean-fastq` folder. The next command is a set of two nested `for` loops that basically reads as "For both file endings listed in `reads.txt`, and then for every sample listed in `taxa.txt`, generate a symlink in the `raw-reads` directory for that sample that leads to the corresponding .fastq.gz file in the `split-adapter-quality-trimmed` folder for this sample".
+
+More Bash tips:
+- The `ln` command generates links. Using the `-s` flag generates symbolic links, which we desire here. The first argument is the file to be linked to, and the second argument is the name and path of the link to be generated.
+- The `cat` command at its most basic level prints a file. It stands for "concatenate" and can be used to combine files if you specify more than one. In `for` loops, the construct `$(cat taxa.txt)` (using `taxa.txt` as an example file) can be used to represent the individual lines of a file as the objects in your `for` loop's set.
 ## Locus matching
 ## Sequence alignment
 ## Phylogenetic analysis
