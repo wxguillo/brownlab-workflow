@@ -10,7 +10,7 @@ This is a tutorial for the phylogenomic workflow used by the Brown lab, where we
 - [Sequence assembly](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#sequence-assembly)
    - [Making the assembly configuration file](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#making-the-assembly-configuration-file)
    - [Running Trinity to assemble cleaned reads](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#running-trinity-to-assemble-cleaned-reads)
-      - [Troubleshooting Trinity](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#running-trinity-to-assemble-cleaned-reads)
+      - [Troubleshooting Trinity](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#troubleshooting-trinity)
 - [Locus matching](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#locus-matching)
 - [Sequence alignment](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#sequence-alignment)
 - [Phylogenetic analysis](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#phylogenetic-analysis)
