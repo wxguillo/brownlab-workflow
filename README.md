@@ -232,7 +232,7 @@ This creates two files: the first, `reads.txt`, contains a list of two file endi
 
 More Bash tips:
 - The `ln` command generates links. Using the `-s` flag generates symbolic links, which we desire here. The first argument is the file to be linked to, and the second argument is the name and path of the link to be generated.
-- The `cat` command at its most basic level prints a file. It stands for "concatenate" and can be used to combine files if you specify more than one. In `for` loops, the construct `$(cat taxa.txt)` (using `taxa.txt` as an example file) can be used to represent the individual lines of a file as the objects in your `for` loop's set.
+- The `cat` command at its most basic level prints a file. It stands for "concatenate" and can be used to combine files if you specify more than one. In `for` loops, the construct `$(cat taxa.txt)` (using `taxa.txt` as an example file) can be used to loop over each line in that file.
 ## Locus matching
 ## Sequence alignment
 ## Phylogenetic analysis
