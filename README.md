@@ -403,4 +403,127 @@ phyluce_align_get_only_loci_with_min_taxa \
 ```
 After using this command, we generate a new folder called `muscle-nexus-75p` (the 75p stands for 75 percent completeness). We filtered down from 2,019 to 1,665 loci. You can try other levels of completeness to see how it affects your retained-locus count.
 For instance, when I retain only loci possessed by 100% of taxa (e.g., all 6), I only retain 416 loci. Generally, as you increase the number of taxa, the odds of any locus being possessed by all of the taxa become lower. When I was working with >200 taxa in a previous project, a 100% complete matrix retained zero loci (meaning it was useless).
+
+After filtering for completeness, we need to "clean up" the locus files. This can be done with the following command:
+```
+phyluce_align_remove_locus_name_from_nexus_lines \
+    --alignments muscle-nexus-75p \
+    --output muscle-nexus-clean-75p \
+    --cores 19
+```
+This adds a new folder called `muscle-nexus-clean-75p` that contains the same alignments as `muscle-nexus-75p`, but the locus names have been removed from the taxon names in the file. We can go ahead and remove the "uncleaned" version of the folder:
+```
+rm -r muscle-nexus-75p
+```
+`rm` is the "trash" command of Bash. The `-r` flag specifies that you want to trash "recursively", meaning that you can trash a directory as well as all of the files and directories inside of it.
+#### Filtering by parsimony-informative sites
+Filtering by parsimony-informative sites (PIS) generally means you are filtering out loci that have below a certain number of PIS. Loci with low information content can bias your results so it's good to filter them out. To calculate how many PIS are in each locus, and perform various types of filtering, we will use an R script written by Brown lab alumnus [Connor French](https://github.com/connor-french) that makes use of the package [Phyloch](https://rdrr.io/github/fmichonneau/phyloch/man/phyloch-package.html). If you haven't already, download `pars_inform.R` from the `example-files` directory of this repository.
+
+To use R in the terminal, you have to have it installed on your system. Then just type in `R`. Until you leave R, the terminal will now assume all of your commands are written in R, instead of Bash.
+
+Generally my procedure here is to simply open `pars_inform.R` in a text editor and copy-and-paste commands in chunks into the terminal. You will need to alter parts of the file to suit your needs. The first part of the file looks like this:
+```
+#script to count parsimony informative sites and output to csv
+#load phyloch
+library(phyloch)
+
+#setwd where the reads are
+setwd("/home/bender/Desktop/tutorial/5_taxon-sets/all/muscle-nexus-clean-75p")
+```
+`setwd` is the command that sets your "working directory," which is where R assumes any files specified (and written) will be located. Here I've set the working directory to `5_taxon-sets/all`. You may need to alter it depending on your directory structure.
+
+Next run the following chunk of code, which does most of the dirty work in calculating the PIS in each locus and other associated information. It will take a minute to finish.
+```
+#get list of file names and number of files
+listoffiles <- list.files(pattern="*.nex*")
+nooffiles <- length(listoffiles)
+
+#these are the column names
+record <- c("locusname","pis","length")
+
+#loop to calculate PIS and write the PIS info to a text file
+for (j in 1:nooffiles) {
+  write.table((gsub("?","N",(readLines(listoffiles[j])),fixed=TRUE)),"list_of_pis_by_locus.txt",sep="",quote=FALSE,row.names=FALSE,col.names=FALSE)
+  tempfile <- read.nex("list_of_pis_by_locus.txt")
+  templength <- dim(tempfile)[2]
+  temppis <- pis(tempfile)
+  temp <- cbind(listoffiles[j],temppis,templength)
+  record <- rbind(record,temp)
+}
+#add column names to text file
+write.table(record, "list_of_pis_by_locus.txt",quote=FALSE, row.names=FALSE,col.names=FALSE)
+```
+This command will output a file named `list_of_pis_by_locus.txt` in your `muscle-nexus-clean-75p` directory that contains a list of every locus, its number of PIS, and the locus' length.
+
+Now you need to decide what kind of filtering to perform. I have performed two types of filtering for various projects: The first is the most common, when you went to retain only loci that have PIS within a certain range of values. First, run this chunk:
+```
+###calculate summary data and visualize PIS variables###
+par_data <- as.data.frame(read.table("list_of_pis_by_locus.txt", header = TRUE))
+plot(par_data$pis) #visualize number of PIS
+```
+This should print a plot to the screen of each locus (x) and its number of associated PIS (y). In my case, the number of PIS is strongly clustered below 5 for most loci, with many of them having 0 PIS. Here is my graphical output:  
+![PIS graph](https://i.imgur.com/yX7hNya.png)  
+You can use this graph to inform what you want your thresholds for retaining PIS to be. When doing this, I generally remove low-informative sites as well as highly-informative outliers. Given this distribution, I'd like to remove loci with fewer than 3 PIS, and more than 15 (3 < PIS < 15). Use the following code block:
+```
+###calculate summary data and visualize PIS variables###
+par_data <- as.data.frame(read.table("list_of_pis_by_locus.txt", header = TRUE))
+plot(par_data$pis) #visualize number of PIS
+inform <- subset(par_data, pis >= 3) #subset data set for loci with PIS > 3
+inform <- subset(inform, pis < 15) #remove outliers (change based on obvious outliers to data set)
+plot(inform$pis) #visualize informative loci
+length(inform$pis) #calculate the number of informative loci
+sum(inform$pis) #total number of PIS for informative loci
+fivenum(inform$pis) #summary stats for informative loci (min, lower quartile, median, upper quartile, max)
+inform_names <- inform$locusname #get locus names of informative loci for locus filtering
+#write locus names to a file
+write.table(inform_names, file = "inform_names_PIS_3.txt")
+```
+This writes a file named `inform_names_PIS_3.txt` to `muscle-nexus-clean-75p`. The file contains the names of all UCE loci that meet the criteria you set in the above code block (3 < PIS < 15).
+
+In one of my projects, I desired instead to find the 200 *most parsimony-informative* loci rather than filter for an unknown number that fit specific criteria. This involves ranking the loci by number of PIS and then taking the top 200 (or whatever number you want). To do this, run this code block:
+```
+#find 200 most parsimony-informative loci and save their names
+pistab <- read.delim("list_of_pis_by_locus.txt", header=TRUE, sep = " ")
+pistab_sorted <- pistab[order(-pistab$pis),]
+pistab_sorted_truncated <- pistab_sorted[1:200,]
+topnames <- pistab_sorted_truncated$locusname
+write.table(topnames, file = "top200names.txt")
+```
+This writes a file named `top200names.txt` to `muscle-nexus-clean-75p` that is similar in structure and principle to `inform_names_PIS_3.txt`. 
+
+Now we have a list of the loci we desire (whether loci that fit a certain range of PIS or the most informative X loci). We now need to use this list to grab the .nexus alignment files for those loci. First we need to modify the list file itself to be in a usable format. Currently, the list file should look something like this:
+```
+"x"
+"1" "uce-4885.nexus"
+"2" "uce-2564.nexus"
+"3" "uce-4143.nexus"
+"4" "uce-7695.nexus"
+"5" "uce-869.nexus"
+...
+```
+We need to change it so that all that remains are .nexus filenames. We can use regular expressions to do this. If you don't know, regular expressions are code constructs that are commonly used to search and replace specific patterns in text. They are very intimidating to look at at first, but learning them can make you a badass. You can use Bash commands like `sed` and `awk` to use regular expressions in the Terminal, but we can also do it using the find-and-replace (ctrl+H) utility in gedit. Other text editor programs like Notepad++ also support the use of regular expressions. 
+
+First, go ahead and manually remove the first line `"x"`. Then, open find-and-replace and make sure the "Regular expression" box is ticked. In the "Find" box, type in `"\d+" "(.*.nexus)"`. This is the "search" portion of the regular expression. Then, in the "Replace" box, simply type `\1`. This is the "replace" portion. If you click "Find", the program should highlight everything in the file. Click "Replace All", and you should be left with only the file names, no quotes. Doesn't that feel good? The file should now look like this:
+```
+uce-4885.nexus
+uce-2564.nexus
+uce-4143.nexus
+uce-7695.nexus
+uce-869.nexus
+...
+```
+
+> Regular expression explained: We build the regular expression sequentially to match each line. We need to find the commonalities between each line and represent them using different constructs. First we use a `"` quote to match the starting quote of each line. Then, we use `\d+` to match "one or more digits", which are in the first column. We add `" "` to match the quote, space, quote, that follows the first number. Next we use `.*` as a "wildcard" (analogous to the `*` of Bash), which matches "anything except a line break zero or more times". This construct matches the "uce-4885" part of the first line. Then we close with `.nexus"`, which matches the last portion of the line. Note that the construct `.*.nexus` is enclosed in (parentheses). We do this to "capture" whatever is inside of the parentheses, which we can then use to Replace our match. The Replace construct `\1` signifies the first "captured" match, which is that bit in the parentheses. So basically, we are searching for the whole line, capturing the part we want (the filename), and then replacing the whole line with the capture.  
+
+Now that that's done, we have to take our cleaned list of loci and grab the corresponding .nexus alignment files. First, quit R with `q()`. Then, enter the following Bash commands:
+```
+mkdir muscle-nexus-clean-75p_3
+cd muscle-nexus-clean-75p
+for n in $(cat inform_names_PIS_3.txt); \
+   do cp "$n" ../muscle-nexus-clean-75p_3; \
+done
+```
+We first create a new directory `muscle-nexus-clean-75p_3` to place our filtered loci in (the `_3` part signifies that we filtered loci with fewer than 3 PIS). Then, we go into the `muscle-nexus-clean-75p` directory. The final section is a `for` loop that, for every line in `inform_names_PIS_3.txt` (i.e., for every locus with 3 < PIS < 15), copy that locus' corresponding .nexus file from `muscle-nexus-clean-75p` to `muscle-nexus-clean-75p_3`. 
+
+After running the command, `muscle-nexus-clean-75p_3` contains 385 loci. That's quite a lot of filtering. You may wish to filter less stringently in order to retain more loci. I'll be working on the loci in this folder for the remainder of the tutorial.
 ## Phylogenetic analysis
