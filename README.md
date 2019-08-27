@@ -364,4 +364,24 @@ done
 This is the same command that you might have used to get assembly summary statistics earlier. Like that case, the output will be organized as a .csv file with the following columns:
 >sample,contigs,total bp,mean length,95 CI length,min,max,median,contigs >1kb
 ## Sequence alignment
+The final step before we get to the phylogenetic analysis is sequence alignment. Like sequence assembly, alignment is a classic problem in bioinformatics that has built the careers of several computational biologists. Basically, we need to "align" DNA sequences (think of strings of ATGCGCGTACG... etc.) for each of our samples, so that homologous base pairs are located in the same column. This is a difficult problem because divergent taxa can have very different sequences even for the same gene, making the question of "are these base pairs actually homologous?" fairly nebulous. The desired end results of sequence alignment is a matrix where every column corresponds exactly to homologous base pairs for each taxon (which are represented by rows). The phylogenetics program you use will compare the sequences in the alignment to determine their evolutionary relationships. More divergent sequences should lead to those species being further removed from each other in the phylogeny.
+
+PHYLUCE is integrated with the alignment programs [MAFFT](https://mafft.cbrc.jp/alignment/software/) and [MUSCLE](http://www.drive5.com/muscle/). Faircloth recommends using MAFFT, but it's mostly a matter of personal preference. As a creature of habit, I always tend to use MUSCLE, and will be using that program in this tutorial. Also note that PHYLUCE will perform edge-trimming of alignments (basically an alignment cleaning step) unless otherwise specified. Faircloth recommends this for "closely-related taxa" (<30-50 Ma), which our poison frogs are, so we will allow the edge-trimming.
+
+To perform per-locus alignments, use the following command:
+```
+phyluce_align_seqcap_align \
+    --fasta all-taxa-incomplete.fasta \
+    --output-format nexus \
+    --output muscle-nexus \
+    --taxa 6 \
+    --aligner muscle \
+    --cores 19 \
+    --incomplete-matrix \
+    --log-path log
+```
+- The `--output-format` flag specifies the format of the alignment output. We are using [nexus](http://wiki.christophchamp.com/index.php?title=NEXUS_file_format) format here, a popular format that contains a bit more information than .fasta.
+- The `--taxa` flag specifies the number of taxa in the alignment. I have missed changing this before, and didn't encounter any problems, but it may have a role in parallelization or something performance-related.
+- The `--aligner` flag is used to specify either `muscle` or `mafft`. 
+- Remember to specify the proper number of cores for your machine.
 ## Phylogenetic analysis
