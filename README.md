@@ -216,7 +216,7 @@ phyluce_assembly_assemblo_trinity \
 ```
 - `--clean` specifies that you want to remove extraneous temporary files. This makes the output directory much smaller.
 
-Hopefully your run works the first time. This is generally one of the longest-duration steps in the pipeline - each assembly generally takes an hour to complete with 19 cores. For a set of 96 samples, this process can take most of a working week. I like to run it over a weekend.
+Hopefully your run works the first time. This is generally one of the longest-duration steps in the pipeline - each assembly generally takes an hour to complete with 19 cores. For a set of 96 samples, this process can take most of a working week. I like to run it over a weekend. For these six samples, the run took about four and a half hours with 19 cores.
 
 When the assemblies have finished, you should have a folder called `3_trinity-assemblies` in your `tutorial` folder. Using the command:
 ```
@@ -224,8 +224,11 @@ ls 3_trinity-assemblies
 ```
 should display:
 ```
-DISPLAY THIS
+AbassJB010n1-0182-ABIC_trinity      AhahnJLB17-087-0586-AFIG_trinity  contigs
+AbassJLB07-740-1-0189-ABIJ_trinity  ApeteJLB07-001-0008-AAAI_trinity
+AflavMTR19670-0522-AFCC_trinity     AtrivJMP26720-0524-AFCE_trinity
 ```
+The assembly has generated a set of six folders (one per sample) as well as a folder named `contigs`. Inside each sample folder, you will find a `Trinity.fasta` file that contains the assembly, as well as a `contigs.fasta` link that links to that .fasta file. The `contigs` folder further contains links to each sample's .fasta file.
 #### Troubleshooting Trinity
 Generally, the most common error with Trinity will generally be caused by specifying incorrect file paths in your configuration file. Double-check them to make sure they're correct. 
 
@@ -247,6 +250,118 @@ This creates two files: the first, `reads.txt`, contains a list of two file endi
 More Bash tips:
 - The `ln` command generates links. Using the `-s` flag generates symbolic links, which we desire here. The first argument is the file to be linked to, and the second argument is the name and path of the link to be generated.
 - The `cat` command at its most basic level prints a file. It stands for "concatenate" and can be used to combine files if you specify more than one. In `for` loops, the construct `$(cat taxa.txt)` (using `taxa.txt` as an example file) can be used to loop over each line in that file.
+### Viewing assembly summary stats
+You can use a PHYLUCE command embedded in a simple `for` loop to generate a .csv file containing assembly summary stats. You may wish to put some of them in a publication, or to use them to check that your assembly went well.
+```
+for i in 3_trinity-assemblies/contigs/*.fasta;
+do
+    phyluce_assembly_get_fasta_lengths --input $i --csv;
+done > assembly_stats.csv
+```
+The loop will loop through every file ending in .fasta located in the `3_trinity-assemblies/contigs` folder, and then process it using the `phyluce_assembly_get_fasta_lengths` script. (Note that these are not actual .fasta files, but links to them.)
+
+In order listed, the summary stats printed to `assembly_stats.csv` will be:
+>sample,contigs,total bp,mean length,95 CI length,min,max,median,contigs >1kb
 ## Locus matching
+The next step is going to be a sequence of PHYLUCE commands that essentially takes your assemblies, finds the UCEs inside of them, and then conveniently packages them so that you can later align them.
+### Matching contigs to probes
+The first of these commands is `phyluce_assembly_match_contigs_to_probes`, which matches your contigs to the set of UCE probes used during sequencing. If you haven't already, download the `uce-5k-probes.fasta` file from the `example-files` directory of this repository and put it in `tutorial`. This .fasta file contains the sequences of these UCE probes. The command is as follows:
+```
+phyluce_assembly_match_contigs_to_probes \
+    --contigs 3_trinity-assemblies/contigs \
+    --probes uce-5k-probes.fasta \
+    --output 4_uce-search-results
+```
+For a lot of samples, this command can last long enough to give you a coffee break. For our six samples, it should take only a few seconds. The output will be located in the new folder `4_uce-search-results`. Inside it, you will find six [.lastz](http://www.bx.psu.edu/miller_lab/dist/README.lastz-1.02.00/README.lastz-1.02.00a.html) files, which is another sequence storage format. There will also be a `probe.matches.sqlite` file, which is a database relating each contig to each probe.
+
+If you have issues getting this command to work, it's likely that it's because you copied assemblies over from another directory, which breaks the links in the `contigs` folder of `3_trinity-assemblies`. You can resurrect these links using the `ln -s` command and a `for` loop, or by using it individually for particular samples. You need to link to the `Trinity.fasta` file in that particular sample's assembly directory. You will also need to remake links if you alter a sample's name, say if you forgot to remove periods from names or something like that.
+### Extracting UCE locus data
+The next portion takes the matched contigs/probes and extracts usable sequence data in .fasta format for each sample, organized by UCE locus. There is a bit of setup we have to do first.
+#### Creating taxon sets
+The first thing we have to do before we move on is create one or more "taxon sets". By this I mean a set of samples that you would like to work on. For us, this is just going to be the complete set of six samples we've been processing this whole time. But for other projects, you may wish to use a specific subset of samples at times, and the whole set at others. For example, in my own UCE projects I often have a taxon set that is the full set of samples, as well as another, smaller, one with one representative sample per species. 
+
+To create a taxon set, we need to create yet another configuration file. Don't worry, this one is simple. The file just needs a list of the samples to be used, underneath a header in [square brackets] that gives the taxon set a name. Below is a block of code that creates a file called `taxa.txt`, which contains a taxon set called `all` that contains all six samples.
+```
+echo "[all]" > taxa.txt
+ls 4_uce-search-results >> taxa.txt
+```
+This is a very crude script because we do have to go in and edit the file. It wouldn't be too hard to write a script that makes the file without any other intervention, but it's not hard to make the edits manually. If you open up the file in a program like gedit, it should look like this:
+```
+[all]
+AbassJB010n1-0182-ABIC.contigs.lastz
+AbassJLB07-740-1-0189-ABIJ.contigs.lastz
+AflavMTR19670-0522-AFCC.contigs.lastz
+AhahnJLB17-087-0586-AFIG.contigs.lastz
+ApeteJLB07-001-0008-AAAI.contigs.lastz
+AtrivJMP26720-0524-AFCE.contigs.lastz
+probe.matches.sqlite
+```
+Notice the `[all]` header that gives the taxon set its name. The two things we need to do are:
+- Remove all listed names that are not samples (in this case, `probe.matches.sqlite`)
+- Remove all file endings so that all that's listed are sample names. A simple search-and-replace can take care of this (ctrl+H in gedit).
+
+The final `taxa.txt` file should look like this:
+```
+[all]
+AbassJB010n1-0182-ABIC
+AbassJLB07-740-1-0189-ABIJ
+AflavMTR19670-0522-AFCC
+AhahnJLB17-087-0586-AFIG
+ApeteJLB07-001-0008-AAAI
+AtrivJMP26720-0524-AFCE
+```
+If you have more than one taxon set, you can put all of them in the same file, or put them in separate files.
+
+Next we need to create a file structure, basically a folder for each taxon set. We'll be doing most of the remainder of our work in that folder. Use the following command:
+```
+mkdir -p 5_taxon-sets/all
+```
+The `mkdir` command simply makes a directory. The `-p` flag allows you to make nested directories. We now have a directory named `5_taxon-sets` that contains another directory called `all` that corresponds to our `[all]` taxon set. If we had more than one taxon set in our `taxa.txt` file, we would create a directory for each of them inside `5_taxon-sets`.
+#### Getting .fasta files for each sample and UCE locus
+Next up is a set of commands that takes our .lastz files and .sqlite database, and turns them into .fasta files for each UCE locus and each sample in our taxon set. The first command is `phyluce_assembly_get_match_counts`, used below:
+```
+phyluce_assembly_get_match_counts \
+    --locus-db 4_uce-search-results/probe.matches.sqlite \
+    --taxon-list-config taxa.txt \
+    --taxon-group 'all' \
+    --incomplete-matrix \
+    --output 5_taxon-sets/all/all-taxa-incomplete.conf
+```
+This command generates a configuration file, `all-taxa-incomplete.conf`, that is located in `5_taxon-sets/all`.  
+Now we're going to go into `5_taxon-sets/all` and make a `log` directory:
+```
+cd 5_taxon-sets/all
+mkdir log
+```
+Then we use the following command
+```
+phyluce_assembly_get_fastas_from_match_counts \
+    --contigs ../../3_trinity-assemblies/contigs \
+    --locus-db ../../4_uce-search-results/probe.matches.sqlite \
+    --match-count-output all-taxa-incomplete.conf \
+    --output all-taxa-incomplete.fasta \
+    --incomplete-matrix all-taxa-incomplete.incomplete \
+    --log-path log
+```
+This is a good command to run over your lunch break if you have a lot of samples. For us, it should only take about a minute or two. This command generates a big .fasta file, `all-taxa-incomplete.fasta`, that contains each sample's set of UCE loci. I recommend against attempting to open the file in a GUI program to view it, as it is probably so big that it'll lock up your computer. You can use `less -S all-taxa-incomplete.fasta` to view it seamlessly in Terminal.
+
+If you look at the to-screen output of the previous command, it will tell you how many UCE loci were recovered for each sample. We targeted around 5,000 loci in total, but for most samples we retain ~1,500. This is pretty normal for our poison frog samples.
+#### Getting summary statistics for our UCE loci
+We can use a few commands to look at summary stats pertaining to the UCE loci for each sample. First we need to "explode" the huge .fasta file we generated in the previous step to create a separate .fasta file for each sample.
+```
+phyluce_assembly_explode_get_fastas_file \
+    --input all-taxa-incomplete.fasta \
+    --output-dir exploded-fastas \
+    --by-taxon
+```
+This generates a folder `exploded-fastas` that contains six .fasta files, one for each sample, containing the (unaligned) UCE loci for that sample. Next use this command to generate summary stats:
+```
+for i in exploded-fastas/*.fasta;
+do
+    phyluce_assembly_get_fasta_lengths --input $i --csv;
+done
+```
+This is the same command that you might have used to get assembly summary statistics earlier. Like that case, the output will be organized as a .csv file with the following columns:
+>sample,contigs,total bp,mean length,95 CI length,min,max,median,contigs >1kb
 ## Sequence alignment
 ## Phylogenetic analysis
