@@ -522,8 +522,77 @@ cd muscle-nexus-clean-75p
 for n in $(cat inform_names_PIS_3.txt); \
    do cp "$n" ../muscle-nexus-clean-75p_3; \
 done
+cd ..
 ```
-We first create a new directory `muscle-nexus-clean-75p_3` to place our filtered loci in (the `_3` part signifies that we filtered loci with fewer than 3 PIS). Then, we go into the `muscle-nexus-clean-75p` directory. The final section is a `for` loop that, for every line in `inform_names_PIS_3.txt` (i.e., for every locus with 3 < PIS < 15), copy that locus' corresponding .nexus file from `muscle-nexus-clean-75p` to `muscle-nexus-clean-75p_3`. 
+We first create a new directory `muscle-nexus-clean-75p_3` to place our filtered loci in (the `_3` part signifies that we filtered loci with fewer than 3 PIS). Then, we go into the `muscle-nexus-clean-75p` directory. The final section is a `for` loop that, for every line in `inform_names_PIS_3.txt` (i.e., for every locus with 3 < PIS < 15), copy that locus' corresponding .nexus file from `muscle-nexus-clean-75p` to `muscle-nexus-clean-75p_3`. Finally, we go back to the `all` directory to prepare for the next step.
 
 After running the command, `muscle-nexus-clean-75p_3` contains 385 loci. That's quite a lot of filtering. You may wish to filter less stringently in order to retain more loci. I'll be working on the loci in this folder for the remainder of the tutorial.
+### Concatenating alignments
+The final step before phylogenetic analysis is to concatenate your set of filtered loci into a single alignment. Concatenation in this context means that your alignments will be combined into a single file, and lined up one after another. Note that concatenation is a problematic assumption in phylogenetics and is mostly used for convenience; this is because you're assuming that all of your loci are evolving as a "supergene", when we know in fact this is not the case. We can use "partitions" to divide the concatenated matrix into portions corresponding to each locus, and then assign a different substitution model to each; while more technically "correct," this does have the side effect of making your phylogenetic analysis take way longer. In this tutorial we will not be using partitions, although I will show you how to generate them automatically if you want to use them.
+
+To concatenate the loci in `muscle-nexus-clean-75p_3`, use this command:
+```
+phyluce_align_format_nexus_files_for_raxml \
+    --alignments muscle-nexus-clean-75p_3 \
+    --output muscle-nexus-iqtree-75p_3 \
+    --charsets
+```
+The output will be a new folder named `muscle-nexus-iqtree-75p_3` that contains two files: `muscle-nexus-clean-75p_3.phylip`, a [PHYLIP](http://scikit-bio.org/docs/0.5.0/generated/skbio.io.format.phylip.html)-formatted alignment file containing all 385 retained loci, and `muscle-nexus-clean-75p_3.charsets`, a list of partitions that was generated because we specified the `--charsets` option. This list specifies the location of each locus in the alignment and can be used to specify partitions for phylogenetic analysis, although we will not be using it.
 ## Phylogenetic analysis
+Now we're finally at the good part. This isn't intended to be a comprehensive guide for constructing phylogenies but I will show you how to perform some basic analyses using various methods. The previous steps outlined in this guide are basically a pipeline for preparing your data for this step, which is the actual data analysis part of your project. 
+
+Now that we're doing using PHYLUCE, you should switch back to Java 8 using `sudo update-alternatives --config java`.
+### Maximum likelihood analysis with RAxML
+I think of maximum likelihood (ML) methods as like the peanut-butter-and-jelly sandwich of phylogenetics. A PB&J isn't the most delicious, rigorously constructed sandwich (like a Bayesian Lettuce and Tomato), but it's certainly better than your grandpa's Parsimonious Mayonnaise-only sandwich. A PB&J is serviceable, quick, and always there when you need it. There are several ML methods commonly in use for phylogenetics, but by far the most widely-used is [RAxML](https://cme.h-its.org/exelixis/web/software/raxml/index.html).  
+First, make a new RAxML directory, copy your PHYLIP file into it, and go into it yourself:
+```
+mkdir muscle-nexus-raxml-75p_3 
+cp muscle-nexus-iqtree-75p_3/muscle-nexus-clean-75p_3.phylip muscle-nexus-raxml-75p_3/
+cd muscle-nexus-raxml-75p_3 
+```
+Here's the RAxML command I used:
+```
+~/Documents/RAxML/raxmlHPC-PTHREADS-AVX \
+	-f a \
+	-x $RANDOM \
+	-p $RANDOM \
+	-# autoMRE \
+	-m GTRGAMMA \
+	-s muscle-nexus-clean-75p_3.phylip \
+	-n muscle-nexus-raxml_75p_3 \
+	-T 19
+```
+- `-f` selects the algorithm to use. The `a` argument selects a rapid bootstrap analysis and best-tree search in one run.
+- `-x` random seed for rapid bootstrapping. `$RANDOM` is a UNIX variable that specifies a random number.
+- `-p` random seed for parsimony inferences.
+- `-#` number of alternative runs on distinct starting trees. `autoMRE` specifies majority-rule-tree-based boostopping criteria.
+- `-m` select the model of evolution. `GTRGAMMA` specifies the general-time-reversible nucleotide substitution model with a gamma model of rate heterogeneity. One of RAxML's main weaknesses is that GTRGAMMA and variations of it are really the only substitution models it offers.
+- `-s` input alignment file.
+- `-n` name of output file.
+- `-T` number of threads to use (cores).
+
+To see more of RAxML's options, you can type `~/Documents/RAxML/raxmlHPC-PTHREADS-AVX -h | less -S`. Note that when I call RAxML (`~/Documents/RAxML/raxmlHPC-PTHREADS-AVX`) I am specifyng the path to its location, which is in my Documents folder. Yours may differ.
+
+Running only 6 taxa, 385 loci, and over 19 cores, the analysis finished in a matter of seconds. You can view the tree by installing [FigTree](https://github.com/rambaut/figtree/releases). To open it on a Linux machine, simply type `figtree` into the Terminal (note that you have to be running Java 8, not Java 7). Open the file `RAxML_bipartitions.muscle-nexus-raxml_75p_3`. Figtree contains numerous options for manipulating images of phylogenetic trees. You can reroot, rotate branches, adjust branch widths, create a circle tree, and more. Here is a modified image of my RAxML tree:  
+
+![raxml tree](https://i.imgur.com/iVswDBF.png)  
+This is more or less in line with what we know of the *Ameerega* phylogeny. The node labels are boostrap values, a measure of support for that node. You can add them by selecting "label" as the displayed value for node labels in FigTree.
+### Maximum likelihood analysis with IQ-TREE
+RAxML is very popular, but I actually prefer to use [IQ-TREE](http://www.iqtree.org/), an alternative ML phylogenetics program. I like IQ-TREE because it has great documentation (and a flashy website), flexible and easy-to-understand options, and most importantly it integrates model selection with a wide array of substitution models, certainly more than are offered by RAxML. I generally use IQ-TREE for all of my ML analyses. 
+
+We already made a directory for IQ-TREE when we concatenated our alignments. Go ahead and go into it with `cd muscle-nexus-iqtree-75p_3`. Then run the following command:
+```
+iqtree \
+	-s muscle-nexus-clean-75p_3.phylip \
+	-bb 10000 \
+	-m GTR \
+	-nt 19
+```
+- `-s` input alignment file.
+- `-bb` number of ultrafast bootstrap replicates. Another advantage of IQ-TREE is its super-fast bootstrapping algorithm, which allows you to go for a larger number of bootstraps in a reasonable amount of time. Make sure to cite [Minh et al. 2013](https://academic.oup.com/mbe/article/30/5/1188/997508) if you use it.
+- `-m` substitution model. I use GTR to be roughly equivalent to RAxML. You can also use `-m MFP` to initiate ModelFinder Plus, which will find the best-fit substitution model before running the tree search. 
+- `-nt` number of threads (cores).
+There are many many more options and things you can do with IQ-TREE - this is about as basic of an analysis as you can do with it. The output tree is stored in the file `muscle-nexus-clean-75p_3.phylip.treefile`, which I show below:  
+
+![iqtree tree](https://i.imgur.com/pWzz7Zg.png)  
+As you can see, it is identical in topology to my RAxML tree, but with slightly higher overall bootstrap values and slightly different branch lengths. When comparing the two programs, I find that this is a consistent pattern.
