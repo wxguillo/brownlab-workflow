@@ -384,4 +384,23 @@ phyluce_align_seqcap_align \
 - The `--taxa` flag specifies the number of taxa in the alignment. I have missed changing this before, and didn't encounter any problems, but it may have a role in parallelization or something performance-related.
 - The `--aligner` flag is used to specify either `muscle` or `mafft`. 
 - Remember to specify the proper number of cores for your machine.
+
+This command creates a folder called `muscle-nexus` that has individual per-locus .fasta files, each containing a sequence alignment for that locus. You can easily check how many loci you have by checking how many .fasta files are in this folder; in our case, we have 2,019 (what a coincidence).
+### Locus filtering
+Locus filtering is the final step before phylogenetic analysis can happen. Filtering out uninformative or largely incomplete loci can improve performance and efficiency. In our pipeline there are generally two types of locus filtering we'll be performing:
+- **Filtering by completeness:** This step is technically optional but you should still do it. It removes loci that are only possessed by a few taxa, which can bias your results if left alone.
+- **Filtering by parsimony-informative sites:** This is an optional step that can be useful if you want to filter to a pre-specified number of loci, or further pare down your locus set to be even more informative. A [parsimony-informative site](https://en.wikipedia.org/wiki/Informative_site) is a column in the alignment for which there are at least two different character states, each possessed by at least two taxa. This means that the site can be used to differentiate clades for that character.
+#### Filtering by completeness
+Filtering by completeness means that you are removing loci that are possessed only by a number of taxa below a certain threshold. Another way to think about it is that if you have a 75% complete matrix, it means that all retained loci are possessed by at least 75% of taxa. So, as you increase completeness, it generally *decreases* the number of loci that will be retained, which sounds paradoxical at first. We use the following command to retain a 75% complete matrix:
+```
+phyluce_align_get_only_loci_with_min_taxa \
+	--alignments muscle-nexus \
+	--taxa 6 \
+	--percent 0.75 \
+	--output muscle-nexus-75p \
+	--cores 19 \
+	--log-path log
+```
+After using this command, we generate a new folder called `muscle-nexus-75p` (the 75p stands for 75 percent completeness). We filtered down from 2,019 to 1,665 loci. You can try other levels of completeness to see how it affects your retained-locus count.
+For instance, when I retain only loci possessed by 100% of taxa (e.g., all 6), I only retain 416 loci. Generally, as you increase the number of taxa, the odds of any locus being possessed by all of the taxa become lower. When I was working with >200 taxa in a previous project, a 100% complete matrix retained zero loci (meaning it was useless).
 ## Phylogenetic analysis
