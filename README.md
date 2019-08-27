@@ -592,7 +592,25 @@ iqtree \
 - `-bb` number of ultrafast bootstrap replicates. Another advantage of IQ-TREE is its super-fast bootstrapping algorithm, which allows you to go for a larger number of bootstraps in a reasonable amount of time. Make sure to cite [Minh et al. 2013](https://academic.oup.com/mbe/article/30/5/1188/997508) if you use it.
 - `-m` substitution model. I use GTR to be roughly equivalent to RAxML. You can also use `-m MFP` to initiate ModelFinder Plus, which will find the best-fit substitution model before running the tree search. 
 - `-nt` number of threads (cores).
+
 There are many many more options and things you can do with IQ-TREE - this is about as basic of an analysis as you can do with it. The output tree is stored in the file `muscle-nexus-clean-75p_3.phylip.treefile`, which I show below:  
 
 ![iqtree tree](https://i.imgur.com/pWzz7Zg.png)  
 As you can see, it is identical in topology to my RAxML tree, but with slightly higher overall bootstrap values and slightly different branch lengths. When comparing the two programs, I find that this is a consistent pattern.
+### Coalescent analysis with ASTRAL
+One thing I had to learn with phylogenetics is the difference between a *gene tree* and a *species tree*. When you run a phylogenetic analysis over a single gene like *cox1* (or a concatenated matrix), you're really reconstructing the evoutionary history *of that gene*, not the species involved. The tree can be misleading because generally the labels make us think that the tips represent the whole species, but really it's just a gene of that species. In the 000's, a suite of techniques were developed for integrating coalescent theory, one of the foundations of population genetics, with phylogenetic methods. Basically, coalescent methods track the individual histories of each gene and then use those to construct a *species tree*, which is a wholesale representation of the separate genealogical histories contained within that organism's genome. This accounts for "incomplete lineage sorting", which is the phenomenon that occurs when two or more genes within the same organism have different evolutionary histories, leading to "gene tree discordance". 
+
+There are many different coalescent methods, and many of them work in slightly different ways. The one I like to use the most is called [ASTRAL](https://github.com/smirarab/ASTRAL), which is a summary method. Basically, you feed it a bunch of individual gene trees (constructed using your method of choice), and summarizes them and spits out a species tree. You also need to assign each sample in your set to a putative species, and ASTRAL will "coalesce" them into a single tip. Thus, there is a bit of prior knowledge necessary to use this technique. 
+
+The first step of an ASTRAL analysis is to construct the gene trees. We will do this for the PIS-filtered loci using IQ-TREE embedded in a `for` loop. 
+```
+cd ..
+mkdir muscle-nexus-iqtree-genetrees-75p_3
+cd muscle-nexus-iqtree-genetrees-75p_3/
+cp ../muscle-nexus-clean-75p_3/* .
+```
+First we go back into `all`, then we make a new directory to hold the gene trees, and go into it. Then we copy all of the PIS-filtered loci into this directory (not very efficient, I know). Here's the command to run the gene trees.
+```
+for i in *.nexus; do ~/Desktop/Bioinformatics/iqtree-1.6.5-Linux/bin/iqtree -s $i -bb 1000 -m GTR -nt AUTO -czb -redo; done
+```
+Forgive my crude presentation of this command, but it is tried and true. Basically, we are simply looping over every .nexus file in this folder and running it through IQ-TREE, with 1,000 ultrafast bootstrap replicates and a GTR substitution model. The `-nt AUTO` option specifies that the program will automatically decide how many threads to use, which was apparently necessary for this run. The `-czb` option contracts very short branch lengths (common in gene trees) to polytomies, which reduces gene tree bias. The `-redo` option allows you to repeat the command without deleting previous results, which is handy when you're troubleshooting. Unfortunately, since the `-nt AUTO` option was necessary, many of the trees were run with 1 core only, so the analysis took a decent amount of time.
