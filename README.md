@@ -654,4 +654,9 @@ The output file is called `astral_sptree.treefile`. Here is what mine looks like
 
 ![astral tree](https://i.imgur.com/4yJJWbV.png)  
 Again, our topology is identical to the previous trees, with the exception that our two *A. bassleri* samples have been "coalesced" into a single tip. Also note that the tip labels have been changed to reflect the species assignments in the mapping file. Finally, note that support measures are in local posterior probabilities rather than bootstrap values.
+### Bayesian analysis with BEAST
+Bayesian phylogenetic methods are commonly regarded as "the best" and "most robust" in the business, but also infamously elicit moans and groans (at least from me) because of the considerable computational power and time required to run them. [BEAST 2](http://www.beast2.org/) is one of the most popular of these programs, and I will be using it to demonstrate a Bayesian analysis. A detailed tutorial explaining the ins and outs of priors, convergence, ESS values, etc. is beyond the scope of this guide so I will assume you've done at least a little reading up on Bayesian methods.
+#### Subsetting loci for BEAST
+There are three things that can make a BEAST run take an intractably long amount of time to converge: having lots of sequence data (=loci), lots of taxa (=samples), or too few threads (=cores). We know we'll be using 19 cores, and we already have a very small number of taxa (n=6), but we still have a decent number of loci (n=385). We're going to further subset our collection of loci to increase computational efficiency. Doing this does suck because you're effectively ignoring a large portion of your data, but as one reviewer once told me, "Nobody has seventy years to wait for their BEAST run to converge".
 
+There are a couple ways to subset your loci. One is to use the X most parsimony-informative loci, which I showed you how to find in [this section]().
