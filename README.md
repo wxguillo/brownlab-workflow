@@ -659,4 +659,75 @@ Bayesian phylogenetic methods are commonly regarded as "the best" and "most robu
 #### Subsetting loci for BEAST
 There are three things that can make a BEAST run take an intractably long amount of time to converge: having lots of sequence data (=loci), lots of taxa (=samples), or too few threads (=cores). We know we'll be using 19 cores, and we already have a very small number of taxa (n=6), but we still have a decent number of loci (n=385). We're going to further subset our collection of loci to increase computational efficiency. Doing this does suck because you're effectively ignoring a large portion of your data, but as one reviewer once told me, "Nobody has seventy years to wait for their BEAST run to converge".
 
-There are a couple ways to subset your loci. One is to use the X most parsimony-informative loci, which I showed you how to find in [this section]().
+There are a couple ways to subset your loci. One is to use the X most parsimony-informative loci, which I showed you how to find in [this section](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#filtering-by-parsimony-informative-sites). Another is to use a subset of random loci. We'll do this for demonstrative purposes. To get a list of, let's say 50 random loci, use this command (make sure you're in the `all` directory):
+```
+shuf -n50 muscle-nexus-clean-75p/inform_names_PIS_3.txt > random_loci_n50.txt
+```
+This creates a file `random_loci_n50.txt` in `all` that contains a list of 50 .nexus files, randomly selected from your PIS-filtered set of 385 loci. In the past, I have obtained a list of 200 random loci and then split it further into 4 random subsets of 50 loci each with the command `split -n 4 random_loci_n200.txt`. We will not be doing this as 50 loci is few enough as is.
+
+Once we have our list, we can copy the loci listed in `random_loci_n50.txt` into a new folder, `muscle-nexus-beast_3_n50`:
+```
+mkdir muscle-nexus-beast_3_n50
+for i in $(cat random_loci_n50.txt); \
+	do cp muscle-nexus-clean-75p_3/$i muscle-nexus-beast_3_n50/; \
+done
+```
+The `for` loop identifies each locus listed in `random_loci_n50.txt`, and then copies those loci from `muscle-nexus-clean-75p_3` to `muscle-nexus-beast_3_n50`. 
+
+Finally, we need to concatenate our loci into a single alignment, using this command:
+```
+phyluce_align_format_nexus_files_for_raxml \
+	--alignments muscle-nexus-beast_3_n50 \
+	--output muscle-nexus-beast_3_n50/beast_n50 \
+	--nexus
+```
+This created a new subfolder, `beast_n50`, inside the folder `muscle-nexus-beast_3_n50`, and put a .nexus file, `muscle-nexus-beast_3_n50.nexus`, into it. Go ahead and `cd` into `beast_n50`, as we'll be working from here for the rest of this tutorial. Note that we used the `--nexus` option to specify the output to be in .nexus format rather than .phylip. 
+#### Setting up a BEAST run with BEAUti
+BEAST is a bit different than the other phylogenetics programs we've used because it is only based partially on the command line. Bayesian phylogenetics programs tend to have more settings (due to prior selection) than others, so the authors of BEAST decided to make a GUI program called BEAUti to make setting these priors more intuitive. If you have BEAUti installed, go ahead and open it simply by typing `beauti` (make sure Java 8 is on). 
+
+BEAUti will open up in a new window. Go ahead and select "File" and open up `muscle-nexus-beast_3_n50.nexus` via the "Import alignment" option. You should see a list of six tabs near the top of the screen. We have to go through and provide settings for each one:
+- **Partitions**
+    - This section shows a list of each partition provided in the alignment you imported. Since we didn't partition our matrix, we effectively have one partition, shown in a single row. The row shows the number of taxa, sites, and data type of the matrix. You can rename the Site Model, Clock Model, and Tree Model here, but we will leave them as default.
+- **Tip Dates**
+    - This section is used if not all of samples are extant species (i.e., you are using fossil data). This is not the case for us, so we can safely ignore this tab.
+- **Site Model**
+    - This section defines the substitution model to be used in the analysis. Using the GTR model here (the most complex one) can lead to overparameterization, so I like to use HKY. Select it from the "Subst Model" main drop-down menu, and select "Empirical" frequencies. 
+    - Historically I have used 4 Gamma Categories as well.
+- **Clock Model**
+    - This section defines the clock model. Go ahead and select "Relaxed Clock Log Normal". 
+    - For Clock.rate you want to put in an estimate of substitution rate - the authors recommend just using 1 x 10 raised to whatever magnitude your estimate is. For UCEs, we'll use a clock rate of 1e-10.
+- **Priors**
+    - This section defines a lot of priors such as the tree model, and, importantly, your divergence time calibration(s). We'll leave Tree, birthRate.t, gammaShape.s, kappa.s, and ucldSTdev.c at their default values. 
+    - To add a divergence time calibration, click "+ Add Prior". A new window will appear. Enter any name for the "Taxon set label"; I entered AMEEREGA. We then need to move all descendants of the calibration node from the left box into the right box; we are calibrating the node separating *A. bassleri* from the others, so select all of the taxa and click the ">>" button.
+    - A new prior, "AMEEREGA.prior", should have appeared after clicking OK. Check the "monophyletic" box, and select "Normal" from the drop-down menu. We are assigning this node a normal distribution. To parameterize the distribution, click the black arrow on the left side of "AMEEREGA.prior" to open a new menu. For "Mean",  input 9.901 (Ma), and for Sigma (=standard deviation), input 1.977. This is a previous estimate of the mean and stdev for this node from a previous study of *Ameerega*. 
+- **MCMC**
+    - This section sets up how many generations you want the run to proceed for, and how much output you want to record. 
+    - Leave "Chain Length" at default at 10,000,000.
+    - Set "tracelog" to Log Every 10,000 generations.
+    - Other parameters can be left to default.
+
+When you're done with all of those settings, save the resulting .xml file as `beast_n50.xml`. It should be stored in your `beast_n50` folder.
+#### Running BEAST
+Starting the actual BEAST run is very straightforward. Make sure you're in the `beast_n50` directory, and type:
+```
+beast -threads 19 beast_n50.xml
+```
+There are so few options because the `beast_n50.xml` contains all of our settings as well as our sequence data inside of it.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
