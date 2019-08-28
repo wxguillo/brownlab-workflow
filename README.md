@@ -601,16 +601,53 @@ As you can see, it is identical in topology to my RAxML tree, but with slightly 
 One thing I had to learn with phylogenetics is the difference between a *gene tree* and a *species tree*. When you run a phylogenetic analysis over a single gene like *cox1* (or a concatenated matrix), you're really reconstructing the evoutionary history *of that gene*, not the species involved. The tree can be misleading because generally the labels make us think that the tips represent the whole species, but really it's just a gene of that species. In the 000's, a suite of techniques were developed for integrating coalescent theory, one of the foundations of population genetics, with phylogenetic methods. Basically, coalescent methods track the individual histories of each gene and then use those to construct a *species tree*, which is a wholesale representation of the separate genealogical histories contained within that organism's genome. This accounts for "incomplete lineage sorting", which is the phenomenon that occurs when two or more genes within the same organism have different evolutionary histories, leading to "gene tree discordance". 
 
 There are many different coalescent methods, and many of them work in slightly different ways. The one I like to use the most is called [ASTRAL](https://github.com/smirarab/ASTRAL), which is a summary method. Basically, you feed it a bunch of individual gene trees (constructed using your method of choice), and summarizes them and spits out a species tree. You also need to assign each sample in your set to a putative species, and ASTRAL will "coalesce" them into a single tip. Thus, there is a bit of prior knowledge necessary to use this technique. 
-
+#### Constructing gene trees with IQ-TREE for ASTRAL input
 The first step of an ASTRAL analysis is to construct the gene trees. We will do this for the PIS-filtered loci using IQ-TREE embedded in a `for` loop. 
 ```
 cd ..
 mkdir muscle-nexus-iqtree-genetrees-75p_3
+mkdir muscle-nexus-astral_3
 cd muscle-nexus-iqtree-genetrees-75p_3/
 cp ../muscle-nexus-clean-75p_3/* .
 ```
-First we go back into `all`, then we make a new directory to hold the gene trees, and go into it. Then we copy all of the PIS-filtered loci into this directory (not very efficient, I know). Here's the command to run the gene trees.
+First we go back into `all`, then we make a new directory to hold the gene trees, as well as an ASTRAL folder, which we will put relevant files in later. We go into the gene trees folder, then we copy all of the PIS-filtered loci into this directory (not very efficient, I know). Here's the command to run the gene trees.
 ```
 for i in *.nexus; do ~/Desktop/Bioinformatics/iqtree-1.6.5-Linux/bin/iqtree -s $i -bb 1000 -m GTR -nt AUTO -czb -redo; done
 ```
-Forgive my crude presentation of this command, but it is tried and true. Basically, we are simply looping over every .nexus file in this folder and running it through IQ-TREE, with 1,000 ultrafast bootstrap replicates and a GTR substitution model. The `-nt AUTO` option specifies that the program will automatically decide how many threads to use, which was apparently necessary for this run. The `-czb` option contracts very short branch lengths (common in gene trees) to polytomies, which reduces gene tree bias. The `-redo` option allows you to repeat the command without deleting previous results, which is handy when you're troubleshooting. Unfortunately, since the `-nt AUTO` option was necessary, many of the trees were run with 1 core only, so the analysis took a decent amount of time.
+Forgive my crude presentation of this command, but it is tried and true. Basically, we are simply looping over every .nexus file in this folder and running it through IQ-TREE, with 1,000 ultrafast bootstrap replicates and a GTR substitution model. The `-nt AUTO` option specifies that the program will automatically decide how many threads to use, which was apparently necessary for this run. The `-czb` option contracts very short branch lengths (common in gene trees) to polytomies, which reduces gene tree bias. The `-redo` option allows you to repeat the command without manually deleting previous results, which is handy when you're troubleshooting. Unfortunately, since the `-nt AUTO` option was necessary, many of the trees were run with 1 core only, so the analysis took a decent amount of time - about seven hours. With more cores, this would have been shorter so you might try experimenting with small numbers rather than going for the `AUTO` option. When running a full gene tree analysis with ~1000 loci and >30 taxa, this process usually takes a day or so even with the full compliment of cores.
+>*Note that in the above command, I call the full filepath to an IQ-TREE v 1.6.5 executable, rather than just calling `iqtree` like I did in the previous section. On my machine, calling `iqtree` only calls v 1.5.5, which does not have the `-czb` option.*
+
+When the command is done running, the folder `muscle-nexus-iqtree-genetrees-75p_3` should contain a multitude of files, including 385 .treefile files that contain a gene tree for each locus. The remaining step is to concatenate all of our treefiles into a single file with `cat`:
+```
+cat *.treefile > ../muscle-nexus-astral_3/gene_trees.newick
+```
+This file is stored in the `muscle-nexus-astral_3` folder in `all`. It should contain a list of 385 trees. This is the main input for ASTRAL.
+#### Creating a mapping file for ASTRAL
+The next step is to create a mapping file that categorizes each of your samples by species, which allows ASTRAL to coalesce multiple samples of the same species into a single tip. Note that if your sample already has only one sample per species, you do not need a mapping file, and ASTRAL will correctly assume that that is the case.
+
+It would be more work than it's worth to create the mapping file entirely in Terminal, so we'll mostly do it by hand. It's fairly straightforward. First, let's go back into the `all` folder with `cd ..`. Then, use this command to copy `taxa.txt` (already a list of our samples) and write it to a file named `sp_map.txt` in `all`:
+```
+cp ../../taxa.txt muscle-nexus-astral_3/sp_map.txt
+```
+We now need to edit `sp_map.txt` manually to assign each sample to a species. First we need to remove the `[all]` header at the top; we don't need that for this. The basic structure of the mapping file is simply the species, followed by a colon, then the different samples that comprise that species, separated from each other by commas. The only case where we have more than one sample per species is for our *Ameerega bassleri* samples, so we'll put them together. Also, the IQ-TREE runs changed our samples' names to having _ underscores rather than - dashes between name components, so we need to manually change the dashes to underscores in the mapping file (use a simple find-and-replace). Your file should look like this after editing:
+```
+bassleri:AbassJB010n1_0182_ABIC,AbassJLB07_740_1_0189_ABIJ
+flavopicta:AflavMTR19670_0522_AFCC
+hahneli:AhahnJLB17_087_0586_AFIG
+petersi:ApeteJLB07_001_0008_AAAI
+trivittata:AtrivJMP26720_0524_AFCE
+```
+#### Running ASTRAL
+Ironically, running the gene trees for ASTRAL is the longest part of the process, whereas ASTRAL itself will finish running in a minute or two. First, go into the ASTRAL directory with `cd muscle-nexus-astral_3`. Then, run this command from that directory, making sure that `gene_trees.newick` and `sp_map.txt` are both in there as well:
+```
+java -jar ~/Documents/Astral/astral.5.6.1.jar \
+	-i gene_trees.newick \
+	-o astral_sptree.treefile \
+	-a sp_map.txt
+```
+- Note that the command starts with `java -jar` and specifies the filepath of the `astral.5.6.1.jar` executable. Make sure you are running Java 8, not Java 7.
+- `-i` is the input gene tree file
+- `-o` is the name of the output file
+- `-a` specifies the mapping file
+
+The output file is called `astral_sptree.treefile`. Here is what mine looks like after some editing in FigTree:
