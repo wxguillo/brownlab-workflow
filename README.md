@@ -650,4 +650,8 @@ java -jar ~/Documents/Astral/astral.5.6.1.jar \
 - `-o` is the name of the output file
 - `-a` specifies the mapping file
 
-The output file is called `astral_sptree.treefile`. Here is what mine looks like after some editing in FigTree:
+The output file is called `astral_sptree.treefile`. Here is what mine looks like after some editing in FigTree:  
+
+![astral tree](https://i.imgur.com/4yJJWbV.png)  
+Again, our topology is identical to the previous trees, with the exception that our two *A. bassleri* samples have been "coalesced" into a single tip. Also note that the tip labels have been changed to reflect the species assignments in the mapping file. Finally, note that support measures are in local posterior probabilities rather than bootstrap values.
+
