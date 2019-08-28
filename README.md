@@ -712,11 +712,26 @@ Starting the actual BEAST run is very straightforward. Make sure you're in the `
 ```
 beast -threads 19 beast_n50.xml
 ```
-There are so few options because the `beast_n50.xml` contains all of our settings as well as our sequence data inside of it.
+There are so few options because the `beast_n50.xml` contains all of our settings as well as our sequence data inside of it. Using 19 cores, the run took my computer 50 minutes to finish - your mileage may vary. Note that for a real, publishable BEAST analysis, you will be using a much larger dataset (most likely) and the analysis will take much, much longer. Also, it is best practice to do each run *twice* to assess whether they converge to the same values - effectively doubling the amount of time required. In the past I ran BEAST for 4 subsets of 50 loci each (200 loci total), for 36 taxa. To run each subset twice (amounting to 8 runs) took about 2 weeks total.
+
+Your output will be stored as `muscle-nexus-beast_3_n50.trees`, which is a collection of trees representing the posterior distribution obtained by BEAST. 
+#### Processing BEAST output
+It's a good idea to use [Tracer](https://github.com/beast-dev/tracer) to assess whether your BEAST run converged before you do anything else. Open Tracer with the following command:
+```
+java -jar ~/Desktop/Bioinformatics/Tracer_v1.7.1/lib/tracer.jar
+```
+This will open a new window. Click the + button to load the Trace file, in this case `muscle-nexus-beast_3_n50.log`. The left-hand part of the window will show mean values for parameter estimates, as well as ESS values for each one. **A common rule of thumb is that all ESS values should be > 200.** For this run, we have some as low as 47, which means we probably should have added more generations to our MCMC chain (usually I use 100,000,000 rather than 10,000,000). 
     
-    
-    
-    
+To get our BEAST output into a format where we can visualize it as a single tree, we need to pipe it through a couple of other programs that should have been installed along with BEAST and BEAUti. If you ran more than one BEAST run and you'd like to create a single tree from your combined runs, use the program LogCombiner to combine tree and log files into one. Just type in `logcombiner` to open the program. In this tutorial, we only did one BEAST run, so running LogCombiner is unnecessary. 
+
+We now use TreeAnnotator to visualize our posterior "tree-cloud" as a single tree. Open TreeAnnotator by typing `treeannotator`. 
+- Account for 10% burnin, which will remove the first 10% of trees in our distribution, which were sampled before the run converged and are more divergent than the others. (You can also perform this step in LogCombiner, which makes it unnecessary in TreeAnnotator).
+- Target the Maximum clade credibility tree (default).
+- Target Mean heights.
+- Select `muscle-nexus-beast_3_n50.trees` as the input tree file.
+- Specify `beast_n50.treefile` as the name of the output file.
+
+After you click "Run," the program will run for a few moments and spit out `beast_n50.treefile`. Since this was a pretty flawed BEAST run, our output isn't anything visualizable as it has very very short branch lengths - but this exercise took you through the machines of doing a Bayesian divergence time analysis in BEAST. 
     
     
     
