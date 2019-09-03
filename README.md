@@ -752,7 +752,7 @@ We now use TreeAnnotator to visualize our posterior "tree-cloud" as a single tre
 - Select `muscle-nexus-beast_3_n50.trees` as the input tree file.
 - Specify `beast_n50.treefile` as the name of the output file.
 
-After you click "Run," the program will run for a few moments and spit out `beast_n50.treefile`. Since this was a pretty flawed BEAST run, our output isn't anything visualizable as it has very very short branch lengths - but this exercise took you through the machines of doing a Bayesian divergence time analysis in BEAST. 
+After you click "Run," the program will run for a few moments and spit out `beast_n50.treefile`. Since this was a pretty flawed BEAST run, our output isn't anything visualizable as it has very very short branch lengths - but this exercise took you through the motions of doing a Bayesian divergence time analysis in BEAST. 
     
     
     
