@@ -79,6 +79,15 @@ The way sample names work is that there is generally a truncated version of the 
 >*Note that Plate 2 is a bit different than the others in that there are four .fastq files for each sample rather than two. Basically, an additional sequencing run was necessary. We combined both runs for each lane for each sample and put them into the folder `combo` that is located inside the `plate2` folder. Use those files.*  
 
 Also place the various files in the `example-files` folder in this repository directly into the `tutorial` folder on your computer (not a subfolder).
+### Using miniconda2
+On my computer I've installed Phyluce (the suite of programs we'll use to do most tasks) via [Miniconda2](https://docs.conda.io/projects/conda/en/latest/index.html), a package manager frequently used by computational biologists. After installing Miniconda2, you can use the command `conda install phyluce` to install Phyluce and all dependencies (including Illumiprocessor, which is the first part of the pipeline). However, I've added an extra step by installing Phyluce in its own _environment,_ using the command `conda create --name phyluce phyluce`. You need to activate the environment before you can use any of the Phyluce commands. Go ahead and do this with:
+```
+conda activate phyluce
+```
+You should notice a `(phyluce)` modifier appear before your command prompt in Terminal now. If you want to leave the Phyluce environment, run:
+```
+conda deactivate
+```
 ## Read trimming
 The first real step in the process is to trim the raw reads with [Illumiprocessor](https://illumiprocessor.readthedocs.io/en/latest/), a wrapper for the [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) package (make sure to cite both). Illumiprocessor trims adapter contamination and low quality bases from the raw read data. It runs fairly quickly, but be warned that this is generally one of the most onerous steps in the whole workflow, because getting it to run in the first place can be fairly challenging. One of the main difficulties comes in making the configuration file, which tells Illumiprocessor what samples to process and how to rename them. 
 ### Making the Illumiprocessor configuration file
