@@ -2,6 +2,7 @@
 This is a tutorial for the phylogenomic workflow used by the Brown lab, where we use [UCEs](https://www.ultraconserved.org/) to uncover evolutionary histories, mostly in Neotropical poison frogs (Dendrobatidae). In this tutorial I provide sample data and take you through the steps of read processing, sequence assembly, read-to-locus matching, and sequence alignment, and finally provide a few examples of phylogenetic analyses that can be performed on UCE data.
 ## Contents
 - [Directory structure and example files](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#directory-structure-and-example-files)
+   - [Using miniconda2](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#using-miniconda2)
 - [Read trimming](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#read-trimming)
    - [Making the Illumiprocessor configuration file](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#making-the-illumiprocessor-configuration-file)
       - [Making the configuration file quickly with Excel](https://github.com/wxguillo/brownlab-workflow/blob/master/README.md#making-the-configuration-file-quickly-with-excel)
