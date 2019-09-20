@@ -372,7 +372,7 @@ We can use a few commands to look at summary stats pertaining to the UCE loci fo
 ```
 phyluce_assembly_explode_get_fastas_file \
     --input all-taxa-incomplete.fasta \
-    --output-dir exploded-fastas \
+    --output exploded-fastas \
     --by-taxon
 ```
 This generates a folder `exploded-fastas` that contains six .fasta files, one for each sample, containing the (unaligned) UCE loci for that sample. Next use this command to generate summary stats:
