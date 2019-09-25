@@ -417,7 +417,29 @@ phyluce_align_seqcap_align \
 - The `--aligner` flag is used to specify either `muscle` or `mafft`. 
 - Remember to specify the proper number of cores for your machine.
 
-This command creates a folder called `muscle-nexus` that has individual per-locus .fasta files, each containing a sequence alignment for that locus. You can easily check how many loci you have by checking how many .fasta files are in this folder; in our case, we have 2,019 (what a coincidence).
+This command creates a folder called `muscle-nexus` that has individual per-locus .fasta files, each containing a sequence alignment for that locus. You can easily check how many loci you have by checking how many .fasta files are in this folder; in our case, we have 2,019 (what a coincidence).  
+
+If all of your alignments are getting dropped (I've had this problem with newer versions of Phyluce), it's likely because you have edge-trimming turned on. Use the following command instead:
+```
+phyluce_align_seqcap_align \
+    --fasta all-taxa-incomplete.fasta \
+    --output-format nexus \
+    --taxa 6 \
+    --output muscle-nexus \
+    --aligner muscle \
+    --cores 19 \
+    --no-trim \
+    --incomplete-matrix
+    --log-path log
+```
+Then, you can trim the alignments separately with the command:
+```
+phyluce_align_get_trimal_trimmed_alignments_from_untrimmed \
+	--alignments muscle-nexus \
+	--output muscle-nexus-trimmed \
+	--input-format nexus \
+	--output-format nexus
+```
 ### Locus filtering
 Locus filtering is the final step before phylogenetic analysis can happen. Filtering out uninformative or largely incomplete loci can improve performance and efficiency. In our pipeline there are generally two types of locus filtering we'll be performing:
 - **Filtering by completeness:** This step is technically optional but you should still do it. It removes loci that are only possessed by a few taxa, which can bias your results if left alone.
