@@ -313,14 +313,7 @@ This was due to the program being written in an older version of Python than is 
 ```
 open ~/miniconda2/envs/phyluce/bin/phyluce_assembly_assemblo_abyss
 ```
-And then changing line 246 from
-```
-seqstring = seq.seq.tostring() 
-```
-to
-```
-str(seq.seq)
-```
+And then changing line 246 from `seqstring = seq.seq.tostring()` to `seqstring = str(seq.seq)`.
 ### Viewing assembly summary stats
 You can use a PHYLUCE command embedded in a simple `for` loop to generate a .csv file containing assembly summary stats. You may wish to put some of them in a publication, or to use them to check that your assembly went well.
 ```
