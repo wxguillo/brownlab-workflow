@@ -202,11 +202,11 @@ The next step is to assemble our raw reads into usable data. This is the first s
 
 Sequence assembly is basically the process of putting your raw sequence data into a format at least reminiscent of the way the DNA was organized in life. Imagine that you have one hundred copies of a book, and you put them all in a paper shredder. Now you have to reconstruct the book from the shredded chunks. Since you have multiple copies, not all of which were shredded in the same way, you can find chunks that partially match and use these matches to connect to the next sentence. Now, however, imagine that the book contains several pages that are just ["All work and no play makes Jack a dull boy"](https://www.youtube.com/watch?v=4lQ_MjU4QHw) over and over. This makes the process much more difficult because this construction causes extreme ambiguity. This is an analogy to how assembly works, and also how repeating DNA elements make assembly difficult. This is why many computational biologists have made their careers based on writing powerful de novo assembly programs.
 
-PHYLUCE can assemble sequences using the programs [velvet](https://www.ebi.ac.uk/~zerbino/velvet/), [ABySS](http://www.bcgsc.ca/platform/bioinfo/software/abyss), and [Trinity](https://github.com/trinityrnaseq/trinityrnaseq/wiki). Out of these, ABySS is probably regarded as "the best" in terms of assembly accuracy, but Faircloth recommends using Trinity out of a combination of good speed, and providing longer contigs. I have used Trinity in all of my Brown Lab projects and will use it in this tutorial.
+PHYLUCE can assemble sequences using the programs [velvet](https://www.ebi.ac.uk/~zerbino/velvet/), [ABySS](http://www.bcgsc.ca/platform/bioinfo/software/abyss), and [Trinity](https://github.com/trinityrnaseq/trinityrnaseq/wiki). Out of these, ABySS is probably regarded as "the best" in terms of assembly accuracy. Faircloth used to recommend using Trinity out of a combination of good speed, and providing longer contigs, but the current versions of Phyluce and Trinity are no longer compatible (this was an endless source of frustration before I figured it out on the Phyluce Google Group). I have used Trinity in all of my Brown Lab projects, so I'll leave its use in this tutorial, but you should use either ABySS or Velvet now.
 
 Just like with Illumiprocessor, the first thing we need to do is... make a configuration file!
 ### Making the assembly configuration file
-Compared to the Illumiprocessor config file, the assembly one is very easy to make (and can be downloaded as `assembly.conf` from the `example-files` directory in this repository). You can make it with a simple Bash script:
+Compared to the Illumiprocessor config file, the assembly one is very easy to make (and can be downloaded as `assembly.conf` from the `example-files` directory in this repository). it will work with any of the three assembler programs. You can make it with a simple Bash script:
 ```
 cd 2_clean-fastq
 echo "[samples]" > ../assembly.conf
@@ -237,8 +237,40 @@ You should go back into the `tutorial` directory after this. Use:
 ```
 cd ..
 ```
-### Running Trinity to assemble cleaned reads
-With the assembly configuration file completed, we can now run Trinity. Use the following PHYLUCE command:
+### Running ABySS and Velvet to assemble cleaned reads
+To assemble the data using ABySS, run:
+```
+phyluce_assembly_assemblo_abyss \
+    --config assembly.conf \
+    --output 3_abyss-assemblies \
+    --clean \
+    --cores 19 \
+    --kmer 35
+```
+When the assemblies have finished, you should have a folder called `3_abyss-assemblies` in your `tutorial` folder. Using the command:
+```
+ls 3_abyss-assemblies
+```
+should display:
+```
+AbassJB010n1-0182-ABIC_trinity      AhahnJLB17-087-0586-AFIG_trinity  contigs
+AbassJLB07-740-1-0189-ABIJ_trinity  ApeteJLB07-001-0008-AAAI_trinity
+AflavMTR19670-0522-AFCC_trinity     AtrivJMP26720-0524-AFCE_trinity
+```
+The assembly has generated a set of six folders (one per sample) as well as a folder named `contigs`. The `contigs` folder  contains links to each sample's .fasta file.
+
+To run Velvet instead of ABySS, use:
+```
+phyluce_assembly_assemblo_velvet \
+    --config assembly.conf \
+    --output 3_velvet-assemblies \
+    --clean \
+    --cores 19 \
+    --kmer 35
+```
+You can try experimenting with different kmer values to see how it changes the results. I haven't done this myself (who has time for that?) but in Faircloth's examples he always uses a value of 35, so that's what I choose to do here.
+#### Running Trinity to assemble cleaned reads (you probably don't want to do this)
+If you're working with an older version of Phyluce and Trinity, you can try using Trinity to do the assemblies. This is the way we used to do it before the incompatibilities sprung up. Use the following PHYLUCE command:
 ```
 phyluce_assembly_assemblo_trinity \
     --conf assembly.conf \
@@ -247,22 +279,11 @@ phyluce_assembly_assemblo_trinity \
     --cores 19
 ```
 - `--clean` specifies that you want to remove extraneous temporary files. This makes the output directory much smaller.
+- There is no `--kmer` option because Trinity uses a fixed kmer value of 25.
 
-Hopefully your run works the first time. This is generally one of the longest-duration steps in the pipeline - each assembly generally takes an hour to complete with 19 cores. For a set of 96 samples, this process can take most of a working week. I like to run it over a weekend. For these six samples, the run took about four and a half hours with 19 cores.
-
-When the assemblies have finished, you should have a folder called `3_trinity-assemblies` in your `tutorial` folder. Using the command:
-```
-ls 3_trinity-assemblies
-```
-should display:
-```
-AbassJB010n1-0182-ABIC_trinity      AhahnJLB17-087-0586-AFIG_trinity  contigs
-AbassJLB07-740-1-0189-ABIJ_trinity  ApeteJLB07-001-0008-AAAI_trinity
-AflavMTR19670-0522-AFCC_trinity     AtrivJMP26720-0524-AFCE_trinity
-```
-The assembly has generated a set of six folders (one per sample) as well as a folder named `contigs`. Inside each sample folder, you will find a `Trinity.fasta` file that contains the assembly, as well as a `contigs.fasta` link that links to that .fasta file. The `contigs` folder further contains links to each sample's .fasta file.
-#### Troubleshooting Trinity
-Generally, the most common error with Trinity will generally be caused by specifying incorrect file paths in your configuration file. Double-check them to make sure they're correct. 
+Hopefully your run works the first time. In my experience, Trinity takes significantly longer to run than the other assembly programs - each assembly generally takes an hour to complete with 19 cores. For a set of 96 samples, this process can take most of a working week. I like to run it over a weekend. For these six samples, the run took about four and a half hours with 19 cores.
+#### Troubleshooting Assembly-making
+Generally, the most common error with assembly-making will generally be caused by specifying incorrect file paths in your configuration file. Double-check them to make sure they're correct. 
 
 Other possible issues can arise if you copied the trimmed reads over from another directory without preserving folder structure. This can break the symlinks (symbolic links) that are in the `raw-reads` subfolder of each sample's folder. They need to be replaced for Trinity to function. You can do that with the following Bash commands:
 ```
@@ -282,6 +303,23 @@ This creates two files: the first, `reads.txt`, contains a list of two file endi
 More Bash tips:
 - The `ln` command generates links. Using the `-s` flag generates symbolic links, which we desire here. The first argument is the file to be linked to, and the second argument is the name and path of the link to be generated.
 - The `cat` command at its most basic level prints a file. It stands for "concatenate" and can be used to combine files if you specify more than one. In `for` loops, the construct `$(cat taxa.txt)` (using `taxa.txt` as an example file) can be used to loop over each line in that file.
+
+Another error I've gotten while using ABySS reads:
+```
+AttributeError: 'Seq' object has no attribute 'tostring'
+```
+This was due to the program being written in an older version of Python than is currently being used. I was able to fix the issue by opening up the `phyluce_assembly_assemblo_abyss` script with:
+```
+open ~/miniconda2/envs/phyluce/bin/phyluce_assembly_assemblo_abyss
+```
+And then changing line 246 from
+```
+seqstring = seq.seq.tostring() 
+```
+to
+```
+str(seq.seq)
+```
 ### Viewing assembly summary stats
 You can use a PHYLUCE command embedded in a simple `for` loop to generate a .csv file containing assembly summary stats. You may wish to put some of them in a publication, or to use them to check that your assembly went well.
 ```
@@ -300,7 +338,7 @@ The next step is going to be a sequence of PHYLUCE commands that essentially tak
 The first of these commands is `phyluce_assembly_match_contigs_to_probes`, which matches your contigs to the set of UCE probes used during sequencing. If you haven't already, download the `uce-5k-probes.fasta` file from the `example-files` directory of this repository and put it in `tutorial`. This .fasta file contains the sequences of these UCE probes. The command is as follows:
 ```
 phyluce_assembly_match_contigs_to_probes \
-    --contigs 3_trinity-assemblies/contigs \
+    --contigs 3_abyss-assemblies/contigs \
     --probes uce-5k-probes.fasta \
     --output 4_uce-search-results
 ```
