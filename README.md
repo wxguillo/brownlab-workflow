@@ -400,7 +400,7 @@ mkdir log
 Then we use the following command
 ```
 phyluce_assembly_get_fastas_from_match_counts \
-    --contigs ../../3_trinity-assemblies/contigs \
+    --contigs ../../3_abyss-assemblies/contigs \
     --locus-db ../../4_uce-search-results/probe.matches.sqlite \
     --match-count-output all-taxa-incomplete.conf \
     --output all-taxa-incomplete.fasta \
