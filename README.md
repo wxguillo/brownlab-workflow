@@ -627,7 +627,7 @@ The output will be a new folder named `muscle-nexus-iqtree-75p_3` that contains 
 ## Phylogenetic analysis
 Now we're finally at the good part. This isn't intended to be a comprehensive guide for constructing phylogenies but I will show you how to perform some basic analyses using various methods. The previous steps outlined in this guide are basically a pipeline for preparing your data for this step, which is the actual data analysis part of your project. 
 
-Now that we're doing using PHYLUCE, you should switch back to Java 8 using `sudo update-alternatives --config java`.
+Now that we're done using PHYLUCE, you should switch back to Java 8 using `sudo update-alternatives --config java`.
 ### Maximum likelihood analysis with RAxML
 I think of maximum likelihood (ML) methods as like the peanut-butter-and-jelly sandwich of phylogenetics. A PB&J isn't the most delicious, rigorously constructed sandwich (like a Bayesian Lettuce and Tomato), but it's certainly better than your grandpa's Parsimonious Mayonnaise-only sandwich. A PB&J is serviceable, quick, and always there when you need it. There are several ML methods commonly in use for phylogenetics, but by far the most widely-used is [RAxML](https://cme.h-its.org/exelixis/web/software/raxml/index.html).  
 First, make a new RAxML directory, copy your PHYLIP file into it, and go into it yourself:
