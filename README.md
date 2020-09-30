@@ -339,6 +339,20 @@ phyluce_assembly_match_contigs_to_probes \
 For a lot of samples, this command can last long enough to give you a coffee break. For our six samples, it should take only a few seconds. The output will be located in the new folder `4_uce-search-results`. Inside it, you will find six [.lastz](http://www.bx.psu.edu/miller_lab/dist/README.lastz-1.02.00/README.lastz-1.02.00a.html) files, which is another sequence storage format. There will also be a `probe.matches.sqlite` file, which is a database relating each contig to each probe.
 
 If you have issues getting this command to work, it's likely that it's because you copied assemblies over from another directory, which breaks the links in the `contigs` folder of `3_trinity-assemblies`. You can resurrect these links using the `ln -s` command and a `for` loop, or by using it individually for particular samples. You need to link to the `Trinity.fasta` file in that particular sample's assembly directory. You will also need to remake links if you alter a sample's name, say if you forgot to remove periods from names or something like that.
+
+If you get the following error message:
+```
+Traceback (most recent call last):
+  File "/home/wxg1/miniconda2/envs/wxg/bin/phyluce_assembly_match_contigs_to_probes", line 342, in <module>
+    main()
+  File "/home/wxg1/miniconda2/envs/wxg/bin/phyluce_assembly_match_contigs_to_probes", line 256, in main
+    uces
+  File "/home/wxg1/miniconda2/envs/wxg/bin/phyluce_assembly_match_contigs_to_probes", line 130, in create_probe_database
+    raise sqlite3.OperationalError("Cannot create database")
+sqlite3.OperationalError: Cannot create database
+```
+You likely had an issue with the names of your samples (at least, I did). In my case, the problem was that I had three samples whose names started with numbers. Kind of a dumb reason to get an error message (how finicky is this program, really?), but adding a letter to the front of the sample name and then remaking the symlinks with `ln -s` fixed the issue.
+
 ### Extracting UCE locus data
 The next portion takes the matched contigs/probes and extracts usable sequence data in .fasta format for each sample, organized by UCE locus. There is a bit of setup we have to do first.
 #### Creating taxon sets
