@@ -601,9 +601,24 @@ Now we have a list of the loci we desire (whether loci that fit a certain range 
 "5" "uce-869.nexus"
 ...
 ```
-We need to change it so that all that remains are .nexus filenames. We can use regular expressions to do this. If you don't know, regular expressions are code constructs that are commonly used to search and replace specific patterns in text. They are very intimidating to look at at first, but learning them can make you a badass. You can use Bash commands like `sed` and `awk` to use regular expressions in the Terminal, but we can also do it using the find-and-replace (ctrl+H) utility in gedit. Other text editor programs like Notepad++ also support the use of regular expressions. 
+We need to change it so that all that remains are .nexus filenames. We can use a few simple lines of Bash code to do this.
+```
+# this script fixes the inform_names_PIS_3.txt file
+X=`wc -l inform_names_PIS_1.txt | cut -f1 -d' '`
+Y=`expr $X - 1` # get number of rows minus one
+# cut off first line, get rid of ", take 2nd column, output to tmp
+tail -$Y inform_names_PIS_1.txt | sed 's/"//g' | cut -f2 -d' ' > tmp
+rm inform_names_PIS_1.txt; mv tmp inform_names_PIS_1.txt
+```
+The variable X is the number of lines in `inform_names_PIS_3.txt`, and the variable Y is that quantity minus one. The third line (starting with `tail`) cuts off the first line, removes all quotation marks, and then grabs the second column of the file (i.e., the .nexus filenames). The final line removes the starting file and replaces it with the fixed version.
 
-First, go ahead and manually remove the first line `"x"`. Then, open find-and-replace and make sure the "Regular expression" box is ticked. In the "Find" box, type in `"\d+" "(.*.nexus)"`. This is the "search" portion of the regular expression. Then, in the "Replace" box, simply type `\1`. This is the "replace" portion. If you click "Find", the program should highlight everything in the file. Click "Replace All", and you should be left with only the file names, no quotes. Doesn't that feel good? The file should now look like this:
+> The `wc` command stands for "word-count" and by default outputs the number of lines, number of words, number of characters, and input filename. The `-l` tag makes `wc` only output the number of lines and the final name. I pipe ( `|` ) the output into `cut`, which can fetch columns from files; specifically I take the first "column" (since there's only one row, it's really the first entry) with the `-f1` flag, and I specify that 'space' is the delimiter with the `-d' '` flag. This nets me the number of lines in the file, and sets it equal to the variable `X`. The back-tick marks ( \` ) tell Bash to take the output of whatever is inside of them and run the command with (or in this case set the variable equal to) that output.
+
+> The following command just calculates `X - 1` and sets it equal to `Y`. Notice I use back-ticks the same way.
+
+> In the third command I use `tail`, which displays a file from the bottom up, to chop off the first line, by only outputting (from the bottom-up) the last `X-1` lines, `X` being the number of lines in the original file. I then pipe that output into `sed`, which replaces every quotation mark with nothing. Then I pipe _that_ output into `cut` once more, except I take the 2nd column (`-f2`), which consists of the filenames. Finally I output to a file named `tmp`, remove the original, and rename `tmp` to the original file's name. I can't just do it simple and overwrite the original file when I first create `tmp`; if you do that you'll see you get a blank file instead of what you want, erasing your original data! 
+
+The `inform_names_PIS_1.txt` file should now look like this:
 ```
 uce-4885.nexus
 uce-2564.nexus
@@ -612,8 +627,6 @@ uce-7695.nexus
 uce-869.nexus
 ...
 ```
-
-> Regular expression explained: We build the regular expression sequentially to match each line. We need to find the commonalities between each line and represent them using different constructs. First we use a `"` quote to match the starting quote of each line. Then, we use `\d+` to match "one or more digits", which are in the first column. We add `" "` to match the quote, space, quote, that follows the first number. Next we use `.*` as a "wildcard" (analogous to the `*` of Bash), which matches "anything except a line break zero or more times". This construct matches the "uce-4885" part of the first line. Then we close with `.nexus"`, which matches the last portion of the line. Note that the construct `.*.nexus` is enclosed in (parentheses). We do this to "capture" whatever is inside of the parentheses, which we can then use to Replace our match. The Replace construct `\1` signifies the first "captured" match, which is that bit in the parentheses. So basically, we are searching for the whole line, capturing the part we want (the filename), and then replacing the whole line with the capture.  
 
 Now that that's done, we have to take our cleaned list of loci and grab the corresponding .nexus alignment files. First, quit R with `q()`. Then, enter the following Bash commands:
 ```
